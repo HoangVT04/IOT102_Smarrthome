@@ -1,0 +1,75 @@
+// C++ code
+//
+
+//định nghĩa chân cổng
+#define menu 5
+#define go 4
+#define up 3
+#define down 2
+
+//biến 
+ int flag;
+int flag2;
+int flag3;
+int flag4;
+//chương trình con
+
+//hàm khởi tạo 
+void setup()
+{
+  //nút nhấn
+  pinMode(menu, INPUT_PULLUP);
+  pinMode(go, INPUT_PULLUP);
+  pinMode(up, INPUT_PULLUP);
+  pinMode(down, INPUT_PULLUP);
+  Serial.begin(9600);
+}
+String mode="";
+//chương trình chính
+void loop()
+{
+  //B1: Thu thập dữ liệu: Đọc nút, dọc cảm biến,...
+//B2: Xử lý: đếm nút, chống nhiễu, truyền thông, thời gian thực,...
+  String out = mode+"/";
+  if(digitalRead(down) == 0){
+    flag = 1;mode="";
+  }
+  if(flag == 1 && digitalRead(down) == 1) 
+  { 
+    mode="8/";
+    flag = 0;
+    Serial.print(mode);
+  }
+  
+  if(digitalRead(menu) == 0){
+    flag2 = 1;mode="";
+  }
+  if(flag2 == 1 && digitalRead(menu) == 1) 
+  { 
+    mode="1/";
+    flag2 = 0;
+    Serial.print(mode);
+  }
+  if(digitalRead(go) == 0){
+    flag3 = 1;mode="";
+  }
+  if(flag3 == 1 && digitalRead(go) == 1) 
+  { 
+    mode="5/";
+    flag3 = 0;
+    Serial.print(mode);
+  }
+  
+  if(digitalRead(up) == 0){
+    flag4 = 1;mode="";
+  }
+  if(flag4 == 1 && digitalRead(up) == 1) 
+  { 
+    mode="2/";
+    flag4 = 0;
+    Serial.print(mode);
+  }
+  
+  
+//B3: Điều khiển đầu ra: led, loa, động cơ,...
+}
