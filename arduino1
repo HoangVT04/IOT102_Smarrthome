@@ -5,10 +5,8 @@
 #include <Servo.h>
 //--------- Định nghĩa đổi tên chân cổng -------
 LiquidCrystal lcd_1(9, 8, 7, 6, 5, 4);
-#define leddh 10
-#define lednl 11
-#define coi 12
-
+#define alert 2
+#define door A1
 #define tempPin A0
 #define led1 10
 #define led2 3
@@ -19,14 +17,18 @@ LiquidCrystal lcd_1(9, 8, 7, 6, 5, 4);
 //--------- Khai báo biến toàn cục -------------
 LiquidCrystal lcd(9, 8, 7, 6, 5, 4);
 Servo servo;
-int hour=17;
+int hour=10;
 int min=0;
 int sec=0;
 int press;
 int curtime;
+// hẹn giờ bình nóng lạnh
 int curtime1;
+// hẹn giờ log
+int curtime2;
 int flagtime=0;
 int flagtime1=0;
+int flagtime2=0;
 int mode=0;
 int temp;
 int pointer1=0;
@@ -34,15 +36,17 @@ int pointer2=0;
 int flag;
 int tempon=36;
 int tempoff=28;
-int wateron=100;
-int wateroff=10;
+int wateron=15;
+int wateroff=7;
+int heat=0;
 int onat=17;
-int duration=10;
+int duration=1;
+String doorstatus="close";
 //--------- Các chương trình con ---------------
 //chạy thời gian thực
 void realtime(){
   curtime=millis();
-  if(curtime-flagtime>=1000){
+  if(curtime-flagtime>=999){
     flagtime=curtime;
     sec++;
   if(sec>=60){
@@ -60,18 +64,19 @@ void realtime(){
 
 //giao diện chính
 void displayhome(){
+  realtime();
   String line1 = (String)hour;
          line1 = line1+":";
          line1 = line1+(String)min;
          line1 = line1+":";
          line1 = line1+(String)sec;
          line1 = line1+"  ";
-  		 line1 = line1+(String)gettemp();
+       line1 = line1+(String)gettemp();
          line1 = line1+"C     ";
   String line2 = "W: ";
-  		 line2 = line2+(String)getdistance();
-  		 line2 = line2+"cm ",
- 		 
+       line2 = line2+(String)getdistance();
+       line2 = line2+"cm    ",
+     
   lcd.setCursor(0,0);
   lcd.print(line1);
   lcd.setCursor(0,1);
@@ -80,6 +85,7 @@ void displayhome(){
 
 //đo nhiệt độ
 int gettemp(){
+  realtime();
   int val = analogRead(tempPin);
   float mv = ( val/1023.0)*5000; 
   float cel = mv/10-50;
@@ -100,6 +106,7 @@ int getdistance(){
 }
 //hiển thị menu
 void menudisplay(int p,int pointer){
+  realtime();
   lcd.setCursor(0,0);
   String line1 = "1.Time          ";
   String line2 = "2.AirConditioner";
@@ -123,6 +130,7 @@ void menudisplay(int p,int pointer){
 
 // tự động
 void smarthome(){
+  realtime();
   //dh on
   if(gettemp() >= tempon) digitalWrite(led1,1);
   //dh off
@@ -132,12 +140,24 @@ void smarthome(){
   //water off
   if(getdistance() <= wateroff) servo.write(0);
   // nóng lạnh on
-  if(hour == onat && min ==0 && sec==0 ){ digitalWrite(led2,1);flagtime1=millis();}
-  if(millis() - flag >=duration*60000) digitalWrite(led2,0);
+  if(hour == onat && heat == 0){ digitalWrite(led2,1);flagtime1=millis();heat=1;}
+  curtime1=millis();
+  if(curtime1 - flagtime1 >= duration*60000 && heat ==1 ){ digitalWrite(led2,0); heat = 0;}
   
+  //chống trộm 
+    if(digitalRead(door)==0){
+      if(hour >=22 || hour <= 7) tone(alert,440);
+      doorstatus="Open";
+    }
+    else {noTone(alert);doorstatus="Close";}
+    
 }
+  
+  
+
 //setting của từng mục
 void setting(int pointer1,int pointer2){
+  realtime();
   if(pointer1 ==0){
     lcd.setCursor(0,0);
     lcd.print("1.Set Hour      ");
@@ -165,37 +185,38 @@ void setting(int pointer1,int pointer2){
 }
 //hiện cài đặt với từng giá trị
 void setval(int pointer1,int pointer2){
+  realtime();
     String val;
   if(pointer1==0&&pointer2==0){
-  	val="Hour : "+(String)hour;
+    val="Hour : "+(String)hour;
     val=val+"   ";
   }
   if(pointer1==0&&pointer2==1){
-  	val="Min : "+(String)min;
+    val="Min : "+(String)min;
     val=val+"   ";
   }
   if(pointer1==1&&pointer2==0){
-  	val="Temp on : "+(String)tempon;
+    val="Temp on : "+(String)tempon;
     val=val+"   ";
   }
   if(pointer1==1&&pointer2==1){
-  	val="Temp off : "+(String)tempoff;
+    val="Temp off : "+(String)tempoff;
     val=val+"   ";
   }
   if(pointer1==2&&pointer2==0){
-  	val="Water on : "+(String)hour;
+    val="Water on : "+(String)wateron;
     val=val+"   ";
   }
   if(pointer1==2&&pointer2==1){
-  	val="Water off : "+(String)wateroff;
+    val="Water off : "+(String)wateroff;
     val=val+"   ";
   }
   if(pointer1==3&&pointer2==0){
-  	val="On at : "+(String)onat;
+    val="Heater On at : "+(String)onat;
     val=val+"h   ";
   }
   if(pointer1==3&&pointer2==1){
-  	val="Duration : "+(String)duration;
+    val="Duration : "+(String)duration;
     val=val+"m   ";
   }
   lcd.setCursor(0,0);
@@ -237,9 +258,35 @@ void up(int num){
       if(num == 2)duration++;
       if(duration==30)duration=0;
   }
+}
+void log(){
+  String time = (String)hour+":";
+       time = time +(String)min;
+       time = time +":";
+       time = time +(String)sec;
+
+  String info = "Temp : "+ (String)gettemp();
+         info =info + " ; Water to top :";info = info + (String)getdistance();
+         info =info + " ; Time turn on heater ";info = info +  + onat;
+       info =info + "h for ",info = info +  + duration;
+       info = info +" min";
+
+  String d = "Door : " + doorstatus;
+         d = d + " ; Alert on at 22h-7h";
   
-  
-  
+  String sensor = "Temp turn on ac(""\xB0""C) : " + (String)tempon;
+         sensor = sensor + " ; Temp turn off ac(""\xB0""C) : ";
+         sensor= sensor + (String)tempoff;
+         sensor = sensor+"\n";
+         sensor = sensor + "Distance from top to water max : ";
+         sensor = sensor + (String)wateron;
+         sensor = sensor + " ; Distance from top to water min : ";
+         sensor = sensor + (String)wateroff;
+  Serial.println(sensor);
+  Serial.println(time);
+  Serial.println(info);
+  Serial.println(d);
+  Serial.println();
   
 }
 //--------- Chương trình cài đặt ban đầu -------
@@ -252,6 +299,8 @@ void setup(){
   servo.attach(11);
   //đèn điều hòa
   pinMode(led1,OUTPUT);
+  pinMode(alert, OUTPUT);
+  pinMode(door,INPUT_PULLUP);
   lcd.begin(16, 2); 
   Serial.begin(9600);
 }
@@ -259,14 +308,12 @@ void setup(){
 void loop(){
   
 //B1: Thu thập dữ liệu: Đọc nút, dọc cảm biến,...
-//B2: Xử lý: đếm nút, chống nhiễu, truyền thông, thời gian thực,...
   realtime();
-  //changemode(1);
-//B3: Điều khiển đầu ra: led, loa, động cơ,...
-  smarthome();
+//B2: Xử lý: đếm nút, chống nhiễu, truyền thông, thời gian thực,...
   if (Serial.available() > 0) {
-  	int num = Serial.parseInt();
-    if(num == 1){mode = num;}
+    int num = Serial.parseInt();
+    //menu
+    if(num == 1){mode = 1;}
     //move down
     if(num == 8 && mode ==1){
       pointer1++;
@@ -276,7 +323,7 @@ void loop(){
     if(num == 5 && mode == 1){
       mode=2;num=0;}
     if(mode == 2 && num == 8){
-    	pointer2++;
+      pointer2++;
       if(pointer2==2)pointer2=0;
     }
     //display giá trị
@@ -287,9 +334,11 @@ void loop(){
     up(num);
     //về home
     if(mode == 3 && num == 5){
-      mode=0;num=0;
+      mode=0;num=0;pointer1=0;pointer2=0;
     }
   } 
+//B3: Điều khiển đầu ra: led, loa, động cơ,...
+  smarthome();
   if(mode == 0)
     displayhome();
   //menu
@@ -304,10 +353,13 @@ void loop(){
   if(mode == 3){
     setval(pointer1,pointer2);
   }
-  Serial.print(mode);
-  Serial.print("---");
-  Serial.print(pointer1);
-  Serial.print("---");
-  Serial.println(pointer2);
+  curtime2=millis();
+  if(curtime2-flagtime2>=3000){
+    flagtime2=curtime2;
+    log();
+  }
+  
 }
+
+
 
